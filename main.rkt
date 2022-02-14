@@ -69,134 +69,131 @@
 
 ;Uppdaterar spelarens position varje tick, med hänsyn till kollision osv.
 (define (act-player)
-  (let ((x-pos (send *player* get-x-pos))
-        (y-pos (send *player* get-y-pos)))
-    (let
-        ((x-new (+ x-pos (send *player* get-x-speed)))
+  (let* ((x-pos (send *player* get-x-pos))
+         (y-pos (send *player* get-y-pos))
+         (x-new (+ x-pos (send *player* get-x-speed)))
          (y-new (+ y-pos (send *player* get-y-speed)))
          (room (send *player* get-room)))
-      ;Applicera gravitation på spelaren
-      (define (gravity)
-        (send *player* set-y-speed! (+ (send *player* get-y-speed) (send (send *player* get-room) get-gravity)))
-        (send *player* move! x-new y-new))
-      (if (or (collision? x-pos y-pos) (collision? (+ x-pos 19) y-pos)
-              (collision? x-pos (+ y-pos 19)) (collision? (+ x-pos 19) (+ y-pos 19)))
-          (send *player* move! (* (round (/ x-pos 20)) 20) (* (round (/ y-pos 20)) 20))
-          (void))
-      (cond
-        ((or (send (tile-type x-new y-new) exit?);entering an exit tile?
-             (send (tile-type x-new (+ y-new 19)) exit?) 
-             (send (tile-type (+ x-new 19) y-new) exit?) 
-             (send (tile-type (+ x-new 19) (+ y-new 19)) exit?))
-         (player-death)
-         (send (send *player* get-world) exit-room *player* *menu*))
-        
-        ((or (send (tile-type x-new y-new) death?);entering a death tile?
-             (send (tile-type (+ x-new 10) (+ y-new 20)) death?) 
-             (send (tile-type (+ x-new 19) y-new) death?) 
-             (send (tile-type (+ x-new 10) (+ y-new 20)) death?))
-         (player-death))
-        
-        
-        ((or (collision? x-pos (+ y-pos 20)) (collision? (+ x-pos 19) (+ y-pos 20)));down collision?
-         (send *player* set-allowed-jumps! 2)
+    
+    ;Applicera gravitation på spelaren
+    (define (gravity)
+      (send *player* set-y-speed! (+ (send *player* get-y-speed) (send (send *player* get-room) get-gravity)))
+      (send *player* move! x-new y-new))
+    (if (or (collision? x-pos y-pos) (collision? (+ x-pos 19) y-pos)
+            (collision? x-pos (+ y-pos 19)) (collision? (+ x-pos 19) (+ y-pos 19)))
+        (send *player* move! (* (round (/ x-pos 20)) 20) (* (round (/ y-pos 20)) 20))
+        (void))
+    (cond
+      ((or (send (tile-type x-new y-new) exit?);entering an exit tile?
+           (send (tile-type x-new (+ y-new 19)) exit?)
+           (send (tile-type (+ x-new 19) y-new) exit?)
+           (send (tile-type (+ x-new 19) (+ y-new 19)) exit?))
+       (player-death)
+       (send (send *player* get-world) exit-room *player* *menu*))
+      ((or (send (tile-type x-new y-new) death?);entering a death tile?
+           (send (tile-type (+ x-new 10) (+ y-new 20)) death?) 
+           (send (tile-type (+ x-new 19) y-new) death?) 
+           (send (tile-type (+ x-new 10) (+ y-new 20)) death?))
+       (player-death))
+      
+      ((or (collision? x-pos (+ y-pos 20)) (collision? (+ x-pos 19) (+ y-pos 20)));down collision?
+       (send *player* set-allowed-jumps! 2)
+       
+       (cond
+         ((and (collision? x-pos (+ y-pos 20));down and left collision?
+               (collision? (- x-pos 1) (+ y-pos 19)))
+          (cond ((and (> x-pos x-new) (< y-pos y-new));left and down
+                 (void))
+                ((and (> x-pos x-new) (> y-pos y-new));left and up
+                 (send *player* move! x-pos y-new))
+                ((and (< x-pos x-new) (< y-pos y-new));right and down
+                 (send *player* move! x-new y-pos))
+                ((and (< x-pos x-new) (> y-pos y-new));right and up
+                 (send *player* move! x-new y-new))
+                ((and (= x-pos x-new) (> y-pos y-new));standing still and up
+                 (send *player* move! x-new y-new))
+                (else
+                 (void))))
          
-         (cond
-           ((and (collision? x-pos (+ y-pos 20));down and left collision?
-                 (collision? (- x-pos 1) (+ y-pos 19)))
-            (cond ((and (> x-pos x-new) (< y-pos y-new));left and down
-                   (void))
-                  ((and (> x-pos x-new) (> y-pos y-new));left and up
-                   (send *player* move! x-pos y-new))
-                  ((and (< x-pos x-new) (< y-pos y-new));right and down
-                   (send *player* move! x-new y-pos))
-                  ((and (< x-pos x-new) (> y-pos y-new));right and up
-                   (send *player* move! x-new y-new))
-                  ((and (= x-pos x-new) (> y-pos y-new));standing still and up
-                   (send *player* move! x-new y-new))
-                  (else
-                   (void))))
-           
-           ((and (collision? (+ x-pos 19) (+ y-pos 20));down and right collision?
-                 (collision? (+ x-pos 20) (+ y-pos 19)))
-            (cond ((and (> x-pos x-new) (< y-pos y-new));left and down
-                   (send *player* move! x-new y-pos))
-                  ((and (> x-pos x-new) (> y-pos y-new));left and up
-                   (send *player* move! x-new y-new))
-                  ((and (< x-pos x-new) (< y-pos y-new));right and down
-                   (void))
-                  ((and (< x-pos x-new) (> y-pos y-new));right and up
-                   (send *player* move! x-pos y-new))
-                  ((and (= x-pos x-new) (> y-pos y-new));standing still and up
-                   (send *player* move! x-new y-new))
-                  (else
-                   (void))))
-           
-           ((< y-pos y-new);endast down collision
-            (send *player* move! x-new y-pos))
-           ((> y-pos y-new)
-            (send *player* move! x-new y-new))
-           (else
-            (send *player* move! x-new y-new))))
-        
-        ((or (collision? x-pos (- y-pos 1)) (collision? (+ x-pos 19) (- y-pos 1)));up collision?
-         (gravity)
-         (cond
-           ((and (collision? x-pos (- y-pos 1));up and left collision?
-                 (collision? (- x-pos 1) y-pos))
-            (cond ((and (> x-pos x-new) (< y-pos y-new));left and down
-                   (send *player* move! x-pos y-new))
-                  ((and (> x-pos x-new) (> y-pos y-new));left and up
-                   (void))
-                  ((and (< x-pos x-new) (< y-pos y-new));right and down
-                   (send *player* move! x-new y-new))
-                  ((and (< x-pos x-new) (> y-pos y-new));right and up
-                   (send *player* move! x-new y-pos))
-                  ((and (= x-pos x-new) (< y-pos y-new));standing still and down
-                   (send *player* move! x-new y-new))
-                  (else
-                   (void))))
-           
-           ((and (collision? (+ x-pos 19) (- y-pos 1));up and right colission?
-                 (collision? (+ x-pos 20) y-pos))
-            (cond ((and (> x-pos x-new) (< y-pos y-new));left and down
-                   (send *player* move! x-new y-new))
-                  ((and (> x-pos x-new) (> y-pos y-new));left and up
-                   (send *player* move! x-new y-pos))
-                  ((and (< x-pos x-new) (< y-pos y-new));right and down
-                   (send *player* move! x-pos y-new))
-                  ((and (< x-pos x-new) (> y-pos y-new));right and up
-                   (void))
-                  ((and (= x-pos x-new) (< y-pos y-new));standing still and down
-                   (send *player* move! x-new y-new))
-                  (else
-                   (void))))
-           
-           ((> y-pos y-new);only up collision
-            (send *player* move! x-new y-pos))
-           ((< y-pos y-new)
-            (send *player* move! x-new y-new))
-           (else
-            (send *player* move! x-new y-new))))
-        
-        
-        ((or (collision? (- x-pos 1) y-pos) (collision? (- x-pos 1) (+ y-pos 19)));left collision?
-         (gravity)
-         (if (< x-pos x-new)
-             (send *player* move! x-new y-new)
-             (send *player* move! x-pos y-new)))
-        ((or (collision? (+ x-pos 20) y-pos) (collision? (+ x-pos 20) (+ y-pos 19)));right collision?
-         (gravity)
-         (if (> x-pos x-new)
-             (send *player* move! x-new y-new)
-             (send *player* move! x-pos y-new)))
-        
-        (else ;no collision
-         (if (>= (send *player* get-allowed-jumps) 2)
-             (send *player* set-allowed-jumps! 1)
-             (void))
-         (gravity)
-         (send *player* move! x-new y-new))))))
+         ((and (collision? (+ x-pos 19) (+ y-pos 20));down and right collision?
+               (collision? (+ x-pos 20) (+ y-pos 19)))
+          (cond ((and (> x-pos x-new) (< y-pos y-new));left and down
+                 (send *player* move! x-new y-pos))
+                ((and (> x-pos x-new) (> y-pos y-new));left and up
+                 (send *player* move! x-new y-new))
+                ((and (< x-pos x-new) (< y-pos y-new));right and down
+                 (void))
+                ((and (< x-pos x-new) (> y-pos y-new));right and up
+                 (send *player* move! x-pos y-new))
+                ((and (= x-pos x-new) (> y-pos y-new));standing still and up
+                 (send *player* move! x-new y-new))
+                (else
+                 (void))))
+         
+         ((< y-pos y-new);endast down collision
+          (send *player* move! x-new y-pos))
+         ((> y-pos y-new)
+          (send *player* move! x-new y-new))
+         (else
+          (send *player* move! x-new y-new))))
+      
+      ((or (collision? x-pos (- y-pos 1)) (collision? (+ x-pos 19) (- y-pos 1)));up collision?
+       (gravity)
+       (cond
+         ((and (collision? x-pos (- y-pos 1));up and left collision?
+               (collision? (- x-pos 1) y-pos))
+          (cond ((and (> x-pos x-new) (< y-pos y-new));left and down
+                 (send *player* move! x-pos y-new))
+                ((and (> x-pos x-new) (> y-pos y-new));left and up
+                 (void))
+                ((and (< x-pos x-new) (< y-pos y-new));right and down
+                 (send *player* move! x-new y-new))
+                ((and (< x-pos x-new) (> y-pos y-new));right and up
+                 (send *player* move! x-new y-pos))
+                ((and (= x-pos x-new) (< y-pos y-new));standing still and down
+                 (send *player* move! x-new y-new))
+                (else
+                 (void))))
+         
+         ((and (collision? (+ x-pos 19) (- y-pos 1));up and right colission?
+               (collision? (+ x-pos 20) y-pos))
+          (cond ((and (> x-pos x-new) (< y-pos y-new));left and down
+                 (send *player* move! x-new y-new))
+                ((and (> x-pos x-new) (> y-pos y-new));left and up
+                 (send *player* move! x-new y-pos))
+                ((and (< x-pos x-new) (< y-pos y-new));right and down
+                 (send *player* move! x-pos y-new))
+                ((and (< x-pos x-new) (> y-pos y-new));right and up
+                 (void))
+                ((and (= x-pos x-new) (< y-pos y-new));standing still and down
+                 (send *player* move! x-new y-new))
+                (else
+                 (void))))
+         
+         ((> y-pos y-new);only up collision
+          (send *player* move! x-new y-pos))
+         ((< y-pos y-new)
+          (send *player* move! x-new y-new))
+         (else
+          (send *player* move! x-new y-new))))
+      
+      ((or (collision? (- x-pos 1) y-pos) (collision? (- x-pos 1) (+ y-pos 19)));left collision?
+       (gravity)
+       (if (< x-pos x-new)
+           (send *player* move! x-new y-new)
+           (send *player* move! x-pos y-new)))
+      ((or (collision? (+ x-pos 20) y-pos) (collision? (+ x-pos 20) (+ y-pos 19)));right collision?
+       (gravity)
+       (if (> x-pos x-new)
+           (send *player* move! x-new y-new)
+           (send *player* move! x-pos y-new)))
+      
+      (else ;no collision
+       (if (>= (send *player* get-allowed-jumps) 2)
+           (send *player* set-allowed-jumps! 1)
+           (void))
+       (gravity)
+       (send *player* move! x-new y-new)))))
 
 #| Graphics |#
 (define *game-window* (new frame%
