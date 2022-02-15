@@ -72,13 +72,13 @@
   (let* ((x-pos (send *player* get-x-pos))
          (y-pos (send *player* get-y-pos))
          (x-new (+ x-pos (send *player* get-x-speed)))
-         (y-new (+ y-pos (send *player* get-y-speed)))
-         (room (send *player* get-room)))
+         (y-new (+ y-pos (send *player* get-y-speed))))
     
     ;Applicera gravitation på spelaren
     (define (gravity)
       (send *player* set-y-speed! (+ (send *player* get-y-speed) (send (send *player* get-room) get-gravity)))
       (send *player* move! x-new y-new))
+    
     (if (or (collision? x-pos y-pos) (collision? (+ x-pos 19) y-pos)
             (collision? x-pos (+ y-pos 19)) (collision? (+ x-pos 19) (+ y-pos 19)))
         (send *player* move! (* (round (/ x-pos 20)) 20) (* (round (/ y-pos 20)) 20))
