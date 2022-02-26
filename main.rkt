@@ -20,9 +20,7 @@
                   (player-death)
                   (send *game-timer* start 16 #f)
                   (send *continous-x-timer* start 16 #f)
-                  (set! *game-paused?* #f))
-                 (else
-                  (void))))
+                  (set! *game-paused?* #f))))
           ((eq? key 'escape)
            (set! *game-paused?* #t)
            (send *game-timer* stop)
@@ -33,20 +31,16 @@
            (send (send *graphics-canvas* get-dc) set-font (make-object font% 16 'default))
            (send (send *graphics-canvas* get-dc) draw-text "Press r to DIE!" 10 55))
           ((eq? key #\space)
-           (if (<= (send *player* get-allowed-jumps) 0)
-               (void)
-               (begin
+           (unless (<= (send *player* get-allowed-jumps) 0)
                  (send *player* set-y-speed! (- (send *player* get-y-speed) jump-height))
-                 (send *player* set-allowed-jumps! (- (send *player* get-allowed-jumps) 1)))))
+                 (send *player* set-allowed-jumps! (- (send *player* get-allowed-jumps) 1))))
           ((or (eq? key 'left) (eq? key #\a))
            (send *player* set-continous-speed! (- (send *player* get-movement-speed))))
           ((or (eq? key 'right) (eq? key #\d))
            (send *player* set-continous-speed! (send *player* get-movement-speed)))
           ((or (eq? release-key 'left) (eq? release-key #\a)
                (eq? release-key 'right) (eq? release-key #\d))
-           (send *player* set-continous-speed! 0))
-          (else
-           (void)))))
+           (send *player* set-continous-speed! 0)))))
 
 ;Begränsar spelarens hastighet
 (define (friction)
@@ -103,9 +97,8 @@
       [(collision? x-pos y-new) ; TODO: x-pos or x-new?
        (send *player* set-y-speed! 0)
        ; Reset jump count if player landed
-       (if (> y-speed 0)
-           (send *player* set-allowed-jumps! 2)
-           (void))
+       (when (> y-speed 0)
+           (send *player* set-allowed-jumps! 2))
        ; TODO: Set pos to edge of tile
        (set! y-new y-pos)]
       ; No collision
@@ -175,10 +168,8 @@
         (player-speed (send *player* get-movement-speed))
         (jump-height (send *player* get-jump-height))
         (allowed-jumps (send *player* get-allowed-jumps)))
-    (cond ((eq? key #\space)
-           (print "hello"))
-          (else
-           (void)))))
+    (when (eq? key #\space)
+           (print "hello"))))
 
 (define (render-menu canvas dc)
   (let* ((world (send *player* get-world)))
