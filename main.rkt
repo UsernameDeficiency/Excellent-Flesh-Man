@@ -32,8 +32,8 @@
            (send (send *graphics-canvas* get-dc) draw-text "Press r to DIE!" 10 55))
           ((eq? key #\space)
            (unless (<= (send *player* get-allowed-jumps) 0)
-                 (send *player* set-y-speed! (- (send *player* get-y-speed) jump-height))
-                 (send *player* set-allowed-jumps! (- (send *player* get-allowed-jumps) 1))))
+             (send *player* set-y-speed! (- (send *player* get-y-speed) jump-height))
+             (send *player* set-allowed-jumps! (- (send *player* get-allowed-jumps) 1))))
           ((or (eq? key 'left) (eq? key #\a))
            (send *player* set-continous-speed! (- (send *player* get-movement-speed))))
           ((or (eq? key 'right) (eq? key #\d))
@@ -43,6 +43,7 @@
            (send *player* set-continous-speed! 0)))))
 
 ;Begränsar spelarens hastighet
+; TODO: Player freezes in place for a short time when quickly changing directions, why?
 (define (friction)
   (let ((x-speed (send *player* get-x-speed))
         (y-speed (send *player* get-y-speed)))
@@ -73,47 +74,42 @@
          [x-new (+ x-pos x-speed)]
          [y-new (+ y-pos y-speed)])
     
-    ; Applies gravity to player
-    (define (gravity)
-      (send *player* set-y-speed! (+ (send *player* get-y-speed) (send (send *player* get-room) get-gravity)))
-      (send *player* move! x-new y-new))
-
     ; TODO: Step from player position using respective speed and stop player pos and speed if collision
     ; Check collision in x direction
     (cond
       ; Collision
-      [(collision? x-new y-pos) ; TODO: y-pos or y-new?
-       (begin
-         (send *player* set-x-speed! 0)
-         (set! x-new x-pos))]; TODO: Set pos to edge of tile
+      [(collision? (+ x-new 10) (+ y-pos 20)) ; TODO: y-pos or y-new?
+       (send *player* set-x-speed! 0)
+       (set! x-new x-pos)]; TODO: Set pos to edge of tile
       ; TODO: No collision, keep x-new?
-      [(not (collision? x-new y-pos))
+      [else
        ;(send *player* move! x-new y-new)])
        (void)])
     
     ; Check collision in y direction
     (cond
       ; Collision
-      [(collision? x-pos y-new) ; TODO: x-pos or x-new?
+      [(collision? (+ x-pos 10) (+ y-new 20)) ; TODO: x-pos or x-new?
        (send *player* set-y-speed! 0)
        ; Reset jump count if player landed
        (when (> y-speed 0)
-           (send *player* set-allowed-jumps! 2))
+         (send *player* set-allowed-jumps! 2))
        ; TODO: Set pos to edge of tile
        (set! y-new y-pos)]
-      ; No collision
-      [(not (collision? x-pos y-new))
-       (gravity)])
+      ; No collision, apply gravity
+      [else
+       (send *player* set-y-speed! (+ (send *player* get-y-speed) (send (send *player* get-room) get-gravity)))])
     
     ; Move player to new coordinates
     (send *player* move! x-new y-new)
     
     ; TODO: Check if player on death or exit tile
-    (cond [(send (tile-type (send *player* get-x-pos) (send *player* get-y-pos)) exit?)
-           (player-death)
-           (send (send *player* get-world) exit-room *player* *menu*)]
-          [(send (tile-type (send *player* get-x-pos) (send *player* get-y-pos)) death?)
-           (player-death)])))
+    (let ([new-tile (tile-type (send *player* get-x-pos) (send *player* get-y-pos))])
+      (cond [(send new-tile exit?)
+             (player-death)
+             (send (send *player* get-world) exit-room *player* *menu*)]
+            [(send new-tile death?)
+             (player-death)]))))
 
 #| Graphics |#
 (define *game-window* (new frame%
@@ -169,7 +165,7 @@
         (jump-height (send *player* get-jump-height))
         (allowed-jumps (send *player* get-allowed-jumps)))
     (when (eq? key #\space)
-           (print "hello"))))
+      (print "hello"))))
 
 (define (render-menu canvas dc)
   (let* ((world (send *player* get-world)))
